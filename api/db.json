@@ -1,0 +1,20 @@
+{
+  "train_speed": [
+    {
+      "speed": 30,
+      "id": "1"
+    }
+  ],
+  "palang": [
+    {
+      "id": "1",
+      "status": "Terbuka"
+    }
+  ],
+  "camera": [
+    {
+      "id": "1",
+      "status": "Aktif"
+    }
+  ]
+}
