@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/train.dart';
+import '../models/palang.dart';
+import '../models/camera.dart';
 
 class ApiService {
   final String baseUrl;
@@ -28,4 +30,27 @@ class ApiService {
       throw Exception('Create failed');
     }
   }
+
+  // ...existing code...
+  Future<List<Palang>> fetchPalang() async {
+    final resp = await http.get(Uri.parse('$baseUrl/palang'));
+    if (resp.statusCode == 200) {
+      final List jsonList = jsonDecode(resp.body);
+      return jsonList.map((e) => Palang.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load palang');
+    }
+  }
+
+  Future<List<Camera>> fetchCamera() async {
+    final resp = await http.get(Uri.parse('$baseUrl/camera'));
+    if (resp.statusCode == 200) {
+      final List jsonList = jsonDecode(resp.body);
+      return jsonList.map((e) => Camera.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load camera');
+    }
+  }
+
+  // ...existing code...
 }
