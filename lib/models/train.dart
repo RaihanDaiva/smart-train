@@ -1,14 +1,28 @@
 class Train {
   final int id;
-  final int speed;
+  final double speed;
+
   Train({required this.id, required this.speed});
 
-  factory Train.fromJson(Map<String, dynamic> j) => Train(
-        id: j['id'] is int
-            ? j['id'] as int
-            : int.tryParse(j['id']?.toString() ?? '') ?? 0,
-        speed:j['speed'] is int
-            ? j['speed'] as int
-            : int.tryParse(j['speed']?.toString() ?? '') ?? 0
-      );
+  factory Train.fromJson(Map<String, dynamic> j) {
+    final rawSpeed = j['speed'];
+
+    double parsedSpeed;
+
+    if (rawSpeed is int) {
+      parsedSpeed = rawSpeed.toDouble(); // KONVERSI int → double
+    } else if (rawSpeed is double) {
+      parsedSpeed = rawSpeed; // sudah double
+    } else {
+      parsedSpeed = double.tryParse(rawSpeed.toString()) ?? 0.0;
+    }
+
+    return Train(
+      id: j['id'] is int
+          ? j['id']
+          : int.tryParse(j['id']?.toString() ?? '') ?? 0,
+
+      speed: parsedSpeed,
+    );
+  }
 }

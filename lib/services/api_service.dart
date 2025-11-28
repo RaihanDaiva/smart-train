@@ -9,10 +9,11 @@ class ApiService {
   ApiService({required this.baseUrl});
 
   Future<List<Train>> fetchTrain() async {
-    final resp = await http.get(Uri.parse('$baseUrl/train_speed'));
+    final resp = await http.get(Uri.parse('$baseUrl/train/latest'));
     if (resp.statusCode == 200) {
-      final List jsonList = jsonDecode(resp.body);
-      return jsonList.map((e) => Train.fromJson(e)).toList();
+      final jsonObj = jsonDecode(resp.body);
+      // Jika respons adalah objek, bungkus ke List
+      return [Train.fromJson(jsonObj)];
     } else {
       throw Exception('Failed to load train');
     }
@@ -20,7 +21,7 @@ class ApiService {
 
   Future<Train> createTrain(String speed) async {
     final resp = await http.post(
-      Uri.parse('$baseUrl/train_speed'),
+      Uri.parse('$baseUrl/train/latest'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'speed': speed}),
     );
@@ -52,5 +53,17 @@ class ApiService {
     }
   }
 
-  // ...existing code...
+  Future<void> postData(String endpoint, Map<String, dynamic> body) async {
+    final url = Uri.parse("$baseUrl$endpoint");
+
+    final res = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception("Gagal POST: ${res.body}");
+    }
+  }
 }
