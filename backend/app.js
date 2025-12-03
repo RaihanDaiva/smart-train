@@ -91,3 +91,95 @@ app.post("/camera/update", express.json(), (req, res) => {
 app.listen(4000, () => {
   console.log("🚀 Backend running on port 4000");
 });
+
+// ==========================================
+// 🔐 AUTHENTICATION
+// ==========================================
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+const SECRET = "SUPER_SECRET_JWT_UBAH_INI";
+
+// ---------------- REGISTER ----------------
+app.post("/auth/register", express.json(), async (req, res) => {
+  const { name, email, password } = req.body;
+
+  try {
+    // Cek email sudah ada?
+    const [exists] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+
+    if (exists.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert user ke database
+    await db.query(
+      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+      [name, email, hashedPassword]
+    );
+
+    res.json({ message: "Register success" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Register failed" });
+  }
+});
+
+// ---------------- LOGIN ----------------
+app.post("/auth/login", express.json(), async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const [users] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+
+    if (users.length === 0) {
+      return res.status(401).json({ message: "Email not found" });
+    }
+
+    const user = users[0];
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ message: "Wrong password" });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name },
+      SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      accessToken: token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Login failed" });
+  }
+});
+
+// ---------------- USER ----------------
+app.get("/auth/user/:id", async (req, res) => {
+  const [rows] = await db.query(
+    "SELECT * FROM users WHERE id = ? LIMIT 1",
+    [req.params.id]
+  );
+
+  if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+
+  res.json(rows[0]);
+});
+

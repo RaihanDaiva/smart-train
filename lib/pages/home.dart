@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../models/train.dart';
 import '../models/palang.dart';
 import '../models/camera.dart';
+import '../widgets/profile_menu.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -48,8 +49,10 @@ class _HomeState extends State<Home> {
   // =============================
   Future<void> connectMQTT() async {
     mqtt = MqttServerClient(
-        '9e108cb03c734f0394b0f0b49508ec1e.s1.eu.hivemq.cloud', '');
-    
+      '9e108cb03c734f0394b0f0b49508ec1e.s1.eu.hivemq.cloud',
+      '',
+    );
+
     mqtt!.port = 8883;
     mqtt!.secure = true;
     mqtt!.logging(on: true); // AKTIFKAN LOGGING UNTUK DEBUG
@@ -59,7 +62,8 @@ class _HomeState extends State<Home> {
     mqtt!.connectionMessage = MqttConnectMessage()
         .authenticateAs("Device02", "Device02")
         .withClientIdentifier(
-            "flutter_client_${DateTime.now().millisecondsSinceEpoch}")
+          "flutter_client_${DateTime.now().millisecondsSinceEpoch}",
+        )
         .startClean();
 
     try {
@@ -84,8 +88,9 @@ class _HomeState extends State<Home> {
       final MqttReceivedMessage<MqttMessage> msg = messages[0];
       final MqttPublishMessage rec = msg.payload as MqttPublishMessage;
 
-      final payload =
-          MqttPublishPayload.bytesToStringAsString(rec.payload.message);
+      final payload = MqttPublishPayload.bytesToStringAsString(
+        rec.payload.message,
+      );
 
       print("📥 MQTT MSG RAW: $payload");
 
@@ -168,7 +173,7 @@ class _HomeState extends State<Home> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // 🔴 Background AppBar besar
+        // 🔴 HEADER BESAR
         Container(
           height: 350,
           decoration: const BoxDecoration(
@@ -195,10 +200,6 @@ class _HomeState extends State<Home> {
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, color: Colors.red),
                   ),
                 ],
               ),
@@ -248,11 +249,7 @@ class _HomeState extends State<Home> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.train,
-                            color: Colors.red,
-                            size: 60,
-                          ),
+                          const Icon(Icons.train, color: Colors.red, size: 60),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
@@ -448,9 +445,9 @@ class _HomeState extends State<Home> {
                                           fontWeight: FontWeight.bold,
                                           color:
                                               palangs[0].status.toLowerCase() ==
-                                                      "terbuka"
-                                                  ? Colors.green
-                                                  : Colors.red,
+                                                  "terbuka"
+                                              ? Colors.green
+                                              : Colors.red,
                                         ),
                                       ),
                                     ],
@@ -507,9 +504,9 @@ class _HomeState extends State<Home> {
                                           fontWeight: FontWeight.bold,
                                           color:
                                               cameras[0].status.toLowerCase() ==
-                                                      "aktif"
-                                                  ? Colors.green
-                                                  : Colors.red,
+                                                  "aktif"
+                                              ? Colors.green
+                                              : Colors.red,
                                         ),
                                       ),
                                     ],

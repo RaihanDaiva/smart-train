@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/palang.dart';
 import '../models/camera.dart';
+import '../widgets/profile_menu.dart';
 
 class Devices extends StatefulWidget {
   const Devices({super.key});
@@ -43,14 +44,14 @@ class _DevicesState extends State<Devices> {
       setState(() {
         // Hanya update jika tidak sedang melakukan manual update
         if (!_isPalangUpdating) {
-          palangOn = palangData.isNotEmpty 
-              ? palangData[0].status == "Terbuka" 
+          palangOn = palangData.isNotEmpty
+              ? palangData[0].status == "Terbuka"
               : false;
         }
 
         if (!_isCameraUpdating) {
-          cameraOn = cameraData.isNotEmpty 
-              ? cameraData[0].status == "Aktif" 
+          cameraOn = cameraData.isNotEmpty
+              ? cameraData[0].status == "Aktif"
               : false;
         }
 
@@ -80,10 +81,9 @@ class _DevicesState extends State<Devices> {
     setState(() => palangOn = value);
 
     try {
-      await api.postData(
-        "/palang/update",
-        {"status": value ? "Terbuka" : "Tertutup"}
-      );
+      await api.postData("/palang/update", {
+        "status": value ? "Terbuka" : "Tertutup",
+      });
       print("✅ Palang updated: ${value ? 'Terbuka' : 'Tertutup'}");
     } catch (e) {
       print("❌ Error Palang: $e");
@@ -111,10 +111,9 @@ class _DevicesState extends State<Devices> {
     setState(() => cameraOn = value);
 
     try {
-      await api.postData(
-        "/camera/update",
-        {"status": value ? "Aktif" : "Non Aktif"}
-      );
+      await api.postData("/camera/update", {
+        "status": value ? "Aktif" : "Non Aktif",
+      });
       print("✅ Camera updated: ${value ? 'Aktif' : 'Non Aktif'}");
     } catch (e) {
       print("❌ Error Camera: $e");
@@ -165,7 +164,7 @@ class _DevicesState extends State<Devices> {
           padding: const EdgeInsets.only(left: 20, right: 20),
           child: Container(
             margin: const EdgeInsets.only(top: 50, bottom: 20),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -175,10 +174,6 @@ class _DevicesState extends State<Devices> {
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-                CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, color: Colors.red),
                 ),
               ],
             ),
