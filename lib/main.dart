@@ -11,8 +11,12 @@ void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   MyApp({super.key});
+// Kampus
+final api = ApiService(baseUrl: "http://192.168.128.142:4000");
 
-  final api = ApiService(baseUrl: "http://192.168.1.224:4000");
+// Rumah
+// final api = ApiService(baseUrl: "http://192.168.1.75:4000");
+
 
   @override
   Widget build(BuildContext context) {
@@ -48,14 +52,14 @@ class _DashboardState extends State<Dashboard> {
   final pages = const [
     Home(),
     Devices(),
-    ProfilePage(),   // <-- tambah ini
+    ProfilePage(), // <-- tambah ini
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-      body: pages[index],   // <-- Index aman sekarang
+      body: pages[index], // <-- Index aman sekarang
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -73,7 +77,10 @@ class _DashboardState extends State<Dashboard> {
           onTap: (i) => setState(() => index = i),
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.devices), label: "Devices"),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.devices),
+              label: "Devices",
+            ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
           ],
         ),
@@ -81,4 +88,3 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 }
-

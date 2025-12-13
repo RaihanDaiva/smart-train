@@ -100,6 +100,16 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchSpeedHistory() async {
+    final resp = await http.get(Uri.parse('$baseUrl/train/history'))  ;
+
+    if (resp.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(resp.body));
+    } else {
+      throw Exception('Gagal mengambil data sejarah kecepatan');
+    }
+  }
+
   // ====================================================
   // 🟧 PALANG
   // ====================================================

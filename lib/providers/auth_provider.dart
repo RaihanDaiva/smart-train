@@ -7,6 +7,7 @@ class AuthProvider extends ChangeNotifier {
   final FlutterSecureStorage secureStorage;
 
   Map<String, dynamic>? user;
+  String? token;
   bool _loading = false;
 
   AuthProvider({required this.api, FlutterSecureStorage? storage})
@@ -19,9 +20,10 @@ class AuthProvider extends ChangeNotifier {
   // INIT — Cek sesi pengguna
   // ============================================================
   Future<void> init() async {
+    token = await secureStorage.read(key: "token");
     final userId = await secureStorage.read(key: "user_id");
 
-    if (userId != null) {
+    if (token != null && userId != null) {
       try {
         user = await api.getUserById(userId);
       } catch (e) {
@@ -40,29 +42,31 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Login API -> dapat info user & token
       final data = await api.login(email, password);
+      print(data);
 
-      // Simpan usernya
+
+      // Sesuai API kamu
+      token = data["accessToken"];
+      final u = data["user"];
+
       user = {
-        "id": data["id"],
-        "name": data["name"],
-        "email": data["email"],
+        "id": u["id"],
+        "name": u["name"],
+        "email": u["email"],
       };
 
-      // Simpan ID user ke secure storage
-      await secureStorage.write(
-        key: "user_id",
-        value: data["id"].toString(),
-      );
+      await secureStorage.write(key: "token", value: token);
+      await secureStorage.write(key: "user_id", value: u["id"].toString());
 
       _loading = false;
       notifyListeners();
     } catch (e) {
       _loading = false;
       notifyListeners();
-      rethrow; // lempar error ke UI
+      rethrow;
     }
+    
   }
 
   // ============================================================
@@ -74,8 +78,6 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await api.register(name, email, password);
-
-      // otomatis login setelah register
       await login(email, password);
 
       _loading = false;
@@ -92,7 +94,9 @@ class AuthProvider extends ChangeNotifier {
   // ============================================================
   Future<void> logout() async {
     user = null;
+    token = null;
 
+    await secureStorage.delete(key: "token");
     await secureStorage.delete(key: "user_id");
 
     notifyListeners();

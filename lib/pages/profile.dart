@@ -8,7 +8,9 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context);
+
+    final user = auth.user; // ambil user yang sedang login
 
     return Column(
       children: [
@@ -25,7 +27,7 @@ class ProfilePage extends StatelessWidget {
           padding: const EdgeInsets.only(left: 20, right: 20),
           child: Container(
             margin: const EdgeInsets.only(top: 50, bottom: 20),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -40,13 +42,74 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 20,),
-        Center(
+
+        const SizedBox(height: 37),
+
+        // ==========================
+        // CARD PROFILE
+        // ==========================
+        Container(
+          // color: Colors.blue,
+          width: double.infinity,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.person, size: 70, color: Colors.red),
+                const SizedBox(height: 10),
+
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?["name"] ?? "Unknown User",
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 0),
+
+                    Text(
+                      user?["email"] ?? "No Email",
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                    ),
+
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        SizedBox(height: 30),
+
+        // =====================
+        // BUTTON LOGOUT
+        // =====================
+        SizedBox(
+          width: 200,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
             ),
             onPressed: () async {
               await auth.logout();

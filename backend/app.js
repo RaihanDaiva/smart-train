@@ -58,7 +58,7 @@ app.get("/palang", async (req, res) => {
 app.post("/palang/update", express.json(), (req, res) => {
   const { status } = req.body;
   console.log(`📤 Publishing palang status: ${status}`);
-  mqttClient.publish("smarttrain/palang", JSON.stringify({ status }));
+  mqttClient.publish("smartTrain/barrier", JSON.stringify({ status }));
   res.json({ success: true });
 });
 
@@ -84,13 +84,36 @@ app.get("/camera", async (req, res) => {
 app.post("/camera/update", express.json(), (req, res) => {
   const { status } = req.body;
   console.log(`📤 Publishing camera status: ${status}`);
-  mqttClient.publish("smarttrain/camera", JSON.stringify({ status }));
+  mqttClient.publish("smartTrain/camera", JSON.stringify({ status }));
   res.json({ success: true });
 });
 
-app.listen(4000, () => {
-  console.log("🚀 Backend running on port 4000");
+app.listen(4000, "0.0.0.0", () => {
+  console.log("Server running at http://0.0.0.0:4000");
 });
+
+// ==========================================
+// 🚆 TRAIN - Ambil 20 riwayat kecepatan
+// ==========================================
+app.get("/train/history", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+          id, 
+          speed, 
+          DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at 
+       FROM train_speed 
+       ORDER BY id DESC 
+       LIMIT 20`
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ Error fetching train history:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 
 // ==========================================
 // 🔐 AUTHENTICATION
@@ -173,13 +196,12 @@ app.post("/auth/login", express.json(), async (req, res) => {
 
 // ---------------- USER ----------------
 app.get("/auth/user/:id", async (req, res) => {
-  const [rows] = await db.query(
-    "SELECT * FROM users WHERE id = ? LIMIT 1",
-    [req.params.id]
-  );
+  const [rows] = await db.query("SELECT * FROM users WHERE id = ? LIMIT 1", [
+    req.params.id,
+  ]);
 
-  if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+  if (rows.length === 0)
+    return res.status(404).json({ message: "User not found" });
 
   res.json(rows[0]);
 });
-

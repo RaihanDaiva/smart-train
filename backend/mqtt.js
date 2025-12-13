@@ -12,8 +12,8 @@ const mqttPass = "Device02";
 
 // Topic
 const topicSpeed = "esp32/kecepatan";
-const topicPalang = "smarttrain/palang";
-const topicCamera = "smarttrain/camera";
+const topicPalang = "smartTrain/barrier";
+const topicCamera = "smartTrain/camera";
 
 // ==========================================
 // 🗄️ Koneksi MariaDB (Pool untuk async/await)

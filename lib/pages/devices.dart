@@ -13,7 +13,11 @@ class Devices extends StatefulWidget {
 }
 
 class _DevicesState extends State<Devices> {
-  final api = ApiService(baseUrl: "http://192.168.1.224:4000");
+  // Kampus
+  final api = ApiService(baseUrl: "http://192.168.128.142:4000");
+
+  // Rumah
+  // final api = ApiService(baseUrl: "http://192.168.1.75:4000");
 
   bool palangOn = false;
   bool cameraOn = false;
@@ -180,27 +184,25 @@ class _DevicesState extends State<Devices> {
           ),
         ),
 
-        const SizedBox(height: 5),
+        const SizedBox(height: 30),
 
-        Expanded(
-          child: ListView(
-            children: [
-              deviceCard(
-                title: "Palang",
-                icon: Icons.no_crash_outlined,
-                isOn: palangOn,
-                onToggle: updatePalang,
-                isUpdating: _isPalangUpdating,
-              ),
-              deviceCard(
-                title: "Camera",
-                icon: Icons.videocam_rounded,
-                isOn: cameraOn,
-                onToggle: updateCamera,
-                isUpdating: _isCameraUpdating,
-              ),
-            ],
-          ),
+        Column(
+          children: [
+            deviceCard(
+                  title: "Palang",
+                  icon: Icons.no_crash_outlined,
+                  isOn: palangOn,
+                  onToggle: updatePalang,
+                  isUpdating: _isPalangUpdating,
+                ),
+                deviceCard(
+                  title: "Camera",
+                  icon: Icons.videocam_rounded,
+                  isOn: cameraOn,
+                  onToggle: updateCamera,
+                  isUpdating: _isCameraUpdating,
+                ),
+          ],
         ),
       ],
     );
