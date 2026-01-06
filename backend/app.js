@@ -93,27 +93,69 @@ app.listen(4000, "0.0.0.0", () => {
 });
 
 // ==========================================
-// 🚆 TRAIN - Ambil 20 riwayat kecepatan
+// 🚆 TRAIN - Ambil riwayat kecepatan (Filter Waktu)
 // ==========================================
-app.get("/train/history", async (req, res) => {
+app.get("/train-speed/history", async (req, res) => {
+  const { filter } = req.query;
+
+  let condition = "";
+
+  // Kita tambahkan "AND DATE(created_at) = CURDATE()" 
+  // agar filter menit tidak mengambil data hari kemarin (misal saat jam 00:05)
+  switch (filter) {
+    case "1m":
+      condition = "created_at >= NOW() - INTERVAL 1 MINUTE AND DATE(created_at) = CURDATE()";
+      break;
+    case "5m":
+      condition = "created_at >= NOW() - INTERVAL 5 MINUTE AND DATE(created_at) = CURDATE()";
+      break;
+    case "10m":
+      condition = "created_at >= NOW() - INTERVAL 10 MINUTE AND DATE(created_at) = CURDATE()";
+      break;
+    case "30m":
+      condition = "created_at >= NOW() - INTERVAL 30 MINUTE AND DATE(created_at) = CURDATE()";
+      break;
+    default:
+      // Default ke 5 menit hari ini
+      condition = "created_at >= NOW() - INTERVAL 5 MINUTE AND DATE(created_at) = CURDATE()";
+  }
+
   try {
-    const [rows] = await db.query(
-      `SELECT 
-          id, 
-          speed, 
-          DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at 
-       FROM train_speed 
-       ORDER BY id DESC 
-       LIMIT 20`
-    );
+    const [rows] = await db.query(`
+      SELECT speed, created_at
+      FROM train_speed
+      WHERE ${condition}
+      ORDER BY created_at ASC
+    `);
 
     res.json(rows);
   } catch (err) {
-    console.error("❌ Error fetching train history:", err);
-    res.status(500).json({ error: "Database error" });
+    console.error(err);
+    res.status(500).json({ error: "DB Error" });
   }
 });
 
+// ==========================================
+// 🚆 TRAIN - Ambil kecepatan realtime
+// ==========================================
+app.get("/train/realtime", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        segment,
+        speed,
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at
+      FROM train_speed_realtime
+      ORDER BY id DESC
+      LIMIT 30
+    `);
+
+    res.json(rows.reverse()); // penting agar urutan waktu benar
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "DB Error" });
+  }
+});
 
 // ==========================================
 // 🔐 AUTHENTICATION

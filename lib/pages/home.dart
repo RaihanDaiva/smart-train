@@ -9,6 +9,7 @@ import '../models/train.dart';
 import '../models/palang.dart';
 import '../models/camera.dart';
 import '../widgets/profile_menu.dart';
+import '../widgets/filter_button.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -17,13 +18,14 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
+enum TimeFilter { oneMinute, fiveMinutes, tenMinutes, thirtyMinutes }
+
 class _HomeState extends State<Home> {
   // Kampus
-  final api = ApiService(baseUrl: "http://192.168.128.142:4000");
+  final api = ApiService(baseUrl: "http://192.168.1.225:4000");
 
   // Rumah
   // final api = ApiService(baseUrl: "http://192.168.1.75:4000");
-  List<String> speedTimestamps = [];
 
   String? titikKereta;
   String? ipCamera;
@@ -31,6 +33,7 @@ class _HomeState extends State<Home> {
   MqttServerClient? mqtt;
 
   double? speedSegmen;
+  Timer? _realtimeTimer;
   int? idSegmen;
 
   List<Train> trains = [];
@@ -40,7 +43,28 @@ class _HomeState extends State<Home> {
   String? errorMessage;
 
   // Data untuk grafik kecepatan kereta (line chart)
-  List<FlSpot> speedData = [];
+  // HISTORY
+  TimeFilter selectedFilter = TimeFilter.fiveMinutes;
+  List<FlSpot> historySpeedData = [];
+  List<String> historyTimestamps = [];
+
+  String get filterQuery {
+    switch (selectedFilter) {
+      case TimeFilter.oneMinute:
+        return "1m";
+      case TimeFilter.fiveMinutes:
+        return "5m";
+      case TimeFilter.tenMinutes:
+        return "10m";
+      case TimeFilter.thirtyMinutes:
+        return "30m";
+    }
+  }
+
+  // REALTIME
+  List<FlSpot> realtimeSpeedData = [];
+  List<String> realtimeTimestamps = [];
+
   int maxSpeedPoints = 10;
 
   // PageController untuk carousel grafik
@@ -52,148 +76,147 @@ class _HomeState extends State<Home> {
     super.initState();
     connectMQTT();
     fetchData();
-    loadSpeedHistory();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => loadSpeedHistory(),
+    );
+
     _timer = Timer.periodic(const Duration(seconds: 2), (_) => fetchData());
+    _realtimeTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => loadRealtimeChart(),
+    );
   }
 
   Future<void> connectMQTT() async {
     mqtt = MqttServerClient(
       '9e108cb03c734f0394b0f0b49508ec1e.s1.eu.hivemq.cloud',
-      '',
+      'flutter_client_${DateTime.now().millisecondsSinceEpoch}',
     );
 
-    mqtt!.port = 8883;
-    mqtt!.secure = true;
-    mqtt!.logging(on: true);
-    mqtt!.keepAlivePeriod = 20;
+    mqtt!
+      ..port = 8883
+      ..secure = true
+      ..keepAlivePeriod = 20
+      ..logging(on: false);
 
     mqtt!.connectionMessage = MqttConnectMessage()
         .authenticateAs("Device02", "Device02")
-        .withClientIdentifier(
-          "flutter_client_${DateTime.now().millisecondsSinceEpoch}",
-        )
-        .startClean();
+        .withClientIdentifier(mqtt!.clientIdentifier!)
+        .startClean()
+        .withWillQos(MqttQos.atMostOnce);
 
     try {
       await mqtt!.connect();
-      print("✅ MQTT Connected!");
+      if (mqtt!.connectionStatus!.state != MqttConnectionState.connected) {
+        debugPrint("❌ MQTT gagal connect");
+        return;
+      }
+      debugPrint("✅ MQTT Connected");
     } catch (e) {
-      print("❌ MQTT ERROR: $e");
+      debugPrint("❌ MQTT ERROR: $e");
+      mqtt!.disconnect();
       return;
     }
 
-    if (mqtt!.connectionStatus!.state != MqttConnectionState.connected) {
-      print("❌ MQTT tidak terkoneksi!");
-      return;
-    }
-
+    // ===== SUBSCRIBE =====
     mqtt!.subscribe("smartTrain/speedometer", MqttQos.atMostOnce);
-    print("✅ Subscribe ke topic: smartTrain/speedometer");
-
     mqtt!.subscribe("smartTrain/location", MqttQos.atMostOnce);
-    print("✅ Subscribe ke topic: smartTrain/location");
-
     mqtt!.subscribe("smartTrain/camera/ip", MqttQos.atMostOnce);
-    print("✅ Subscribe ke topic: smartTrain/camera/ip");
 
+    // ===== LISTENER =====
     mqtt!.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
-      final MqttReceivedMessage<MqttMessage> msg = messages[0];
-      final topic = msg.topic; // <-- ambil nama topic
+      final msg = messages.first;
+      final topic = msg.topic;
       final rec = msg.payload as MqttPublishMessage;
 
       final payload = MqttPublishPayload.bytesToStringAsString(
         rec.payload.message,
       );
 
-      print("📥 MQTT MSG [$topic] : $payload");
+      debugPrint("📥 MQTT [$topic] : $payload");
 
       try {
         final data = jsonDecode(payload);
 
-        // ========= TOPIC: smartTrain/speedometer =========
+        // ================= SPEED (REALTIME ONLY) =================
         if (topic == "smartTrain/speedometer") {
           double? newSpeed;
 
           if (data.containsKey("kecepatan_S")) {
             newSpeed = double.tryParse(data["kecepatan_S"].toString());
-            idSegmen = data["id"];
           } else if (data.containsKey("kecepatan_s")) {
             newSpeed = double.tryParse(data["kecepatan_s"].toString());
-            idSegmen = data["id"];
-          } else if (data.containsKey("tipe") && data["tipe"] == "segmen") {
+          } else if (data["tipe"] == "segmen") {
             newSpeed = double.tryParse(data["kecepatan"].toString());
-            idSegmen = data["id"];
           }
 
-          if (newSpeed != null) {
+          if (newSpeed != null && mounted) {
             setState(() {
-              speedSegmen = newSpeed!;
-
-              speedData.add(FlSpot(speedData.length.toDouble(), newSpeed));
-
-              if (speedData.length > maxSpeedPoints) {
-                speedData.removeAt(0);
-                speedData = speedData
-                    .asMap()
-                    .entries
-                    .map((e) => FlSpot(e.key.toDouble(), e.value.y))
-                    .toList();
-              }
+              speedSegmen = newSpeed; // ⬅️ hanya ini
             });
           }
         }
 
-        // ========= TOPIC: smartTrain/location =========
-        if (topic == "smartTrain/location") {
-          if (data.containsKey("titik")) {
+        // ================= LOCATION =================
+        if (topic == "smartTrain/location" && data["titik"] != null) {
+          if (mounted) {
             setState(() {
-              titikKereta = data["titik"]; // simpan titik dari MQTT
+              titikKereta = data["titik"];
             });
-            print("📍 Titik Kereta: $titikKereta");
           }
         }
 
-        // ==========================
-        // TOPIC IP CAMERA
-        // ==========================
-        if (topic == "smartTrain/camera/ip") {
-          if (data.containsKey("ip")) {
+        // ================= IP CAMERA =================
+        if (topic == "smartTrain/camera/ip" && data["ip"] != null) {
+          if (mounted) {
             setState(() {
               ipCamera = data["ip"].toString();
             });
-
-            print("📷 IP Camera Updated: $ipCamera");
           }
         }
       } catch (e) {
-        print("❌ JSON Decode error: $e");
+        debugPrint("❌ MQTT JSON error: $e");
       }
     });
   }
 
   Future<void> loadSpeedHistory() async {
-    try {
-      final data = await api.fetchSpeedHistory();
+    final data = await api.fetchSpeedHistory(filter: filterQuery);
 
-      List<FlSpot> spots = [];
-      speedTimestamps.clear();
+    List<FlSpot> spots = [];
+    List<String> timestamps = [];
 
-      for (int i = 0; i < data.length; i++) {
-        final speed = double.tryParse(data[i]["speed"].toString()) ?? 0;
-
-        // Tambah titik grafik
-        spots.add(FlSpot(i.toDouble(), speed));
-
-        // Simpan timestamp
-        speedTimestamps.add(data[i]["created_at"].toString());
-      }
-
-      setState(() {
-        speedData = spots; // ✔ spots sekarang benar terisi
-      });
-    } catch (e) {
-      print("❌ Gagal load speed history: $e");
+    for (int i = 0; i < data.length; i++) {
+      final speed = double.tryParse(data[i]["speed"].toString()) ?? 0;
+      spots.add(FlSpot(i.toDouble(), speed));
+      timestamps.add(data[i]["created_at"]);
     }
+
+    if (!mounted) return;
+
+    setState(() {
+      historySpeedData = spots;
+      historyTimestamps = timestamps;
+    });
+  }
+
+  Future<void> loadRealtimeChart() async {
+    final data = await api.fetchRealtimeSpeed();
+
+    List<FlSpot> spots = [];
+    realtimeTimestamps.clear();
+
+    for (int i = 0; i < data.length; i++) {
+      final speed = double.tryParse(data[i]['speed'].toString()) ?? 0;
+      spots.add(FlSpot(i.toDouble(), speed));
+      realtimeTimestamps.add(data[i]['created_at']);
+    }
+
+    setState(() {
+      realtimeSpeedData = spots;
+    });
   }
 
   Future<void> fetchData() async {
@@ -223,6 +246,7 @@ class _HomeState extends State<Home> {
     mqtt?.disconnect();
     _timer?.cancel();
     _chartPageController.dispose();
+    _realtimeTimer?.cancel();
     super.dispose();
   }
 
@@ -480,14 +504,27 @@ class _HomeState extends State<Home> {
   Widget _buildChartCarousel() {
     final List<Map<String, dynamic>> charts = [
       {
-        'title': 'Kendaraan Pelanggar',
-        'widget': _buildBarChart([5, 8, 14, 7, 9, 6, 12, 15, 11, 4]),
+        'title': 'Kecepatan Kereta Rata-rata',
+        'action': SpeedFilterButton(
+          selectedFilter: selectedFilter,
+          onChanged: (filter) {
+            setState(() => selectedFilter = filter);
+            loadSpeedHistory();
+          },
+        ),
+        'widget': _buildLineChart(
+          data: historySpeedData,
+          timestamps: historyTimestamps,
+        ),
       },
       {
-        'title': 'Kendaraan Melintas',
-        'widget': _buildBarChart([7, 12, 6, 13, 8, 10, 15, 11, 9, 5]),
+        'title': 'Kecepatan Kereta Realtime',
+        'action': null, // ❌ TIDAK ADA FILTER
+        'widget': _buildLineChart(
+          data: realtimeSpeedData,
+          timestamps: realtimeTimestamps,
+        ),
       },
-      {'title': 'Kecepatan Kereta', 'widget': _buildLineChart()},
     ];
 
     return Container(
@@ -558,6 +595,15 @@ class _HomeState extends State<Home> {
                   size: 20,
                 ),
               ),
+            ],
+          ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+          if (charts[_currentChartIndex]['action'] != null)
+            charts[_currentChartIndex]['action'],
+
             ],
           ),
           // Chart PageView
@@ -648,7 +694,10 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Widget _buildLineChart() {
+  Widget _buildLineChart({
+    required List<FlSpot> data,
+    required List<String> timestamps,
+  }) {
     String _monthName(int month) {
       const months = [
         "1",
@@ -670,40 +719,32 @@ class _HomeState extends State<Home> {
     return LineChart(
       LineChartData(
         minY: 0,
-        maxY: speedData.isEmpty
+        maxY: data.isEmpty
             ? 100
-            : speedData.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 10,
+            : data.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 10,
         lineTouchData: LineTouchData(enabled: false),
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 30,
-              interval: (speedData.length / 6).clamp(
-                1,
-                double.infinity,
-              ), // biar tidak terlalu rapat
+              interval: (data.length / 6).clamp(1, double.infinity),
               getTitlesWidget: (value, meta) {
                 int index = value.toInt();
 
-                if (index < 0 || index >= speedTimestamps.length) {
+                if (index < 0 || index >= timestamps.length) {
                   return const SizedBox.shrink();
                 }
 
-                // format yyyy-MM-dd HH:mm:ss dari API
                 final dt = DateTime.parse(
-                  speedTimestamps[index].replaceAll(" ", "T"),
+                  timestamps[index].replaceAll(" ", "T"),
                 );
 
-                // Format: 25 Nov 2025
                 final label =
                     "${dt.day}/${_monthName(dt.month)}/${dt.year}\n"
                     "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
 
-                return Transform.rotate(
-                  angle: 0, // rotasi sekitar -40 derajat
-                  child: Text(label, style: const TextStyle(fontSize: 7)),
-                );
+                return Text(label, style: const TextStyle(fontSize: 7));
               },
             ),
           ),
@@ -724,7 +765,7 @@ class _HomeState extends State<Home> {
         gridData: FlGridData(show: true, drawVerticalLine: false),
         lineBarsData: [
           LineChartBarData(
-            spots: speedData.isEmpty ? [FlSpot(0, 0)] : speedData,
+            spots: data.isEmpty ? [FlSpot(0, 0)] : data,
             isCurved: true,
             color: Colors.red,
             barWidth: 3,

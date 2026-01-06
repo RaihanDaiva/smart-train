@@ -14,7 +14,7 @@ class Devices extends StatefulWidget {
 
 class _DevicesState extends State<Devices> {
   // Kampus
-  final api = ApiService(baseUrl: "http://192.168.128.142:4000");
+  final api = ApiService(baseUrl: "http://192.168.1.225:4000");
 
   // Rumah
   // final api = ApiService(baseUrl: "http://192.168.1.75:4000");
@@ -116,9 +116,9 @@ class _DevicesState extends State<Devices> {
 
     try {
       await api.postData("/camera/update", {
-        "status": value ? "Aktif" : "Non Aktif",
+        "status": value ? "Aktif" : "Nonaktif",
       });
-      print("✅ Camera updated: ${value ? 'Aktif' : 'Non Aktif'}");
+      print("✅ Camera updated: ${value ? 'Aktif' : 'Nonaktif'}");
     } catch (e) {
       print("❌ Error Camera: $e");
       // Revert state if failed

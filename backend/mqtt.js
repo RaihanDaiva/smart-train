@@ -11,9 +11,10 @@ const mqttUser = "Device02";
 const mqttPass = "Device02";
 
 // Topic
-const topicSpeed = "esp32/kecepatan";
+const topicSpeed = "smartTrain/speedometer";
 const topicPalang = "smartTrain/barrier";
 const topicCamera = "smartTrain/camera";
+const topicTelemetry = "smartTrain/telemetry_batch";
 
 // ==========================================
 // 🗄️ Koneksi MariaDB (Pool untuk async/await)
@@ -26,6 +27,14 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
 });
+
+// ==========================================
+// 🧠 Realtime Dedup Cache
+// ==========================================
+const lastRealtimeCache = new Map();
+// format:
+// key   = segment
+// value = { speed, timestamp }
 
 // Test connection
 (async () => {
@@ -49,6 +58,7 @@ let isCameraProcessing = false;
 let lastPalangStatus = null;
 let lastCameraStatus = null;
 
+
 // ==========================================
 // 🚀 MQTT Connect
 // ==========================================
@@ -60,14 +70,18 @@ const mqttClient = mqtt.connect(mqttServer, {
 
 mqttClient.on("connect", () => {
   console.log("📡 Terhubung ke HiveMQ!");
-  mqttClient.subscribe([topicSpeed, topicPalang, topicCamera], (err) => {
-    if (!err) {
-      console.log("✅ Subscribe:");
-      console.log(" - " + topicSpeed);
-      console.log(" - " + topicPalang);
-      console.log(" - " + topicCamera);
+  mqttClient.subscribe(
+    [topicSpeed, topicPalang, topicCamera, topicTelemetry],
+    (err) => {
+      if (!err) {
+        console.log("✅ Subscribe:");
+        console.log(" - " + topicSpeed);
+        console.log(" - " + topicPalang);
+        console.log(" - " + topicCamera);
+        console.log(" - " + topicTelemetry);
+      }
     }
-  });
+  );
 });
 
 // ==========================================
@@ -82,11 +96,11 @@ mqttClient.on("message", async (topic, message) => {
     // ======================================================
     if (topic === topicSpeed) {
       const timestamp = new Date();
-      
+
       // ✅ RATA-RATA → Key: kecepatan_r → SIMPAN KE DATABASE
-      if (data.hasOwnProperty('kecepatan_r')) {
+      if (data.hasOwnProperty("kecepatan_r")) {
         console.log(`📥 RATA-RATA diterima → ${data.kecepatan_r} km/jam`);
-        console.log(`⏱️  Waktu total: ${data.waktu_total || 'N/A'} detik`);
+        console.log(`⏱️  Waktu total: ${data.waktu_total || "N/A"} detik`);
 
         const sql = `
           INSERT INTO train_speed (speed, created_at)
@@ -101,7 +115,7 @@ mqttClient.on("message", async (topic, message) => {
         }
       }
       // ❌ SEGMEN → Key: kecepatan_s → TIDAK DISIMPAN
-      else if (data.hasOwnProperty('kecepatan_s')) {
+      else if (data.hasOwnProperty("kecepatan_s")) {
         console.log(
           `📊 Segmen ${data.id} → ${data.kecepatan_s} km/jam (Realtime UI only)`
         );
@@ -115,11 +129,63 @@ mqttClient.on("message", async (topic, message) => {
     }
 
     // ======================================================
+    // 🚆 KECEPATAN REALTIME (STRONG DEDUP - PER DETIK)
+    // ======================================================
+    if (topic === topicTelemetry) {
+      let payload;
+      try {
+        payload = JSON.parse(message.toString());
+      } catch {
+        return;
+      }
+
+      if (!payload.speed || typeof payload.speed !== "object") return;
+
+      // 🔒 BUCKET PER DETIK
+      const secondBucket = Math.floor(Date.now() / 1000);
+      const createdAt = new Date(secondBucket * 1000);
+
+      const inserts = [];
+
+      for (const [segment, speedRaw] of Object.entries(payload.speed)) {
+        const speed = Number(speedRaw);
+        if (Number.isNaN(speed)) continue;
+
+        const cacheKey = `${segment}_${secondBucket}`;
+
+        // ❌ JIKA SUDAH ADA DI DETIK INI → SKIP
+        if (lastRealtimeCache.has(cacheKey)) continue;
+
+        lastRealtimeCache.set(cacheKey, true);
+
+        inserts.push([segment, speed, createdAt]);
+      }
+
+      if (inserts.length === 0) return;
+
+      try {
+        await db.query(
+          `
+      INSERT INTO train_speed_realtime (segment, speed, created_at)
+      VALUES ?
+    `,
+          [inserts]
+        );
+
+        console.log("📈 Telemetry saved:", inserts.length);
+      } catch (err) {
+        console.error("❌ Telemetry insert error:", err);
+      }
+
+      return;
+    }
+
+    // ======================================================
     // 🚧 PALANG → INSERT DENGAN QUEUE SYSTEM
     // ======================================================
     if (topic === topicPalang) {
       const currentStatus = data.status;
-      
+
       console.log(`📥 PALANG request received: ${currentStatus}`);
 
       // Cek jika sedang processing
@@ -136,19 +202,21 @@ mqttClient.on("message", async (topic, message) => {
         try {
           // Timestamp dibuat DI DALAM QUEUE
           const timestamp = new Date();
-          
+
           // Delay kecil untuk pastikan tidak ada concurrent execution
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 50));
 
           // Cek cache dulu (paling cepat)
           if (currentStatus === lastPalangStatus) {
-            console.log(`⚠️ PALANG: Status sama dengan cache (${currentStatus}), SKIP`);
+            console.log(
+              `⚠️ PALANG: Status sama dengan cache (${currentStatus}), SKIP`
+            );
             return;
           }
 
           // Cek database dengan FOR UPDATE lock
           const connection = await db.getConnection();
-          
+
           try {
             await connection.beginTransaction();
 
@@ -157,14 +225,21 @@ mqttClient.on("message", async (topic, message) => {
             );
 
             // Cek apakah status berbeda dari database
-            if (lastRecord.length > 0 && lastRecord[0].status === currentStatus) {
-              console.log(`⚠️ PALANG: Status sama dengan DB (${currentStatus}), SKIP`);
+            if (
+              lastRecord.length > 0 &&
+              lastRecord[0].status === currentStatus
+            ) {
+              console.log(
+                `⚠️ PALANG: Status sama dengan DB (${currentStatus}), SKIP`
+              );
               await connection.commit();
               lastPalangStatus = currentStatus;
               return;
             }
 
-            console.log(`🚧 PALANG: Insert status ${currentStatus} at ${timestamp.toISOString()}`);
+            console.log(
+              `🚧 PALANG: Insert status ${currentStatus} at ${timestamp.toISOString()}`
+            );
 
             // Insert data baru
             await connection.query(
@@ -174,17 +249,15 @@ mqttClient.on("message", async (topic, message) => {
 
             await connection.commit();
             console.log("💾 PALANG inserted successfully!");
-            
+
             // Update cache setelah berhasil
             lastPalangStatus = currentStatus;
-
           } catch (err) {
             await connection.rollback();
             console.error("❌ Error insert palang:", err);
           } finally {
             connection.release();
           }
-
         } catch (err) {
           console.error("❌ PALANG queue error:", err);
         } finally {
@@ -201,7 +274,7 @@ mqttClient.on("message", async (topic, message) => {
     // ======================================================
     if (topic === topicCamera) {
       const currentStatus = data.status;
-      
+
       console.log(`📥 CAMERA request received: ${currentStatus}`);
 
       // Cek jika sedang processing
@@ -218,19 +291,21 @@ mqttClient.on("message", async (topic, message) => {
         try {
           // Timestamp dibuat DI DALAM QUEUE
           const timestamp = new Date();
-          
+
           // Delay kecil untuk pastikan tidak ada concurrent execution
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 50));
 
           // Cek cache dulu (paling cepat)
           if (currentStatus === lastCameraStatus) {
-            console.log(`⚠️ CAMERA: Status sama dengan cache (${currentStatus}), SKIP`);
+            console.log(
+              `⚠️ CAMERA: Status sama dengan cache (${currentStatus}), SKIP`
+            );
             return;
           }
 
           // Cek database dengan FOR UPDATE lock
           const connection = await db.getConnection();
-          
+
           try {
             await connection.beginTransaction();
 
@@ -239,14 +314,21 @@ mqttClient.on("message", async (topic, message) => {
             );
 
             // Cek apakah status berbeda dari database
-            if (lastRecord.length > 0 && lastRecord[0].status === currentStatus) {
-              console.log(`⚠️ CAMERA: Status sama dengan DB (${currentStatus}), SKIP`);
+            if (
+              lastRecord.length > 0 &&
+              lastRecord[0].status === currentStatus
+            ) {
+              console.log(
+                `⚠️ CAMERA: Status sama dengan DB (${currentStatus}), SKIP`
+              );
               await connection.commit();
               lastCameraStatus = currentStatus;
               return;
             }
 
-            console.log(`📸 CAMERA: Insert status ${currentStatus} at ${timestamp.toISOString()}`);
+            console.log(
+              `📸 CAMERA: Insert status ${currentStatus} at ${timestamp.toISOString()}`
+            );
 
             // Insert data baru
             await connection.query(
@@ -256,17 +338,15 @@ mqttClient.on("message", async (topic, message) => {
 
             await connection.commit();
             console.log("💾 CAMERA inserted successfully!");
-            
+
             // Update cache setelah berhasil
             lastCameraStatus = currentStatus;
-
           } catch (err) {
             await connection.rollback();
             console.error("❌ Error insert camera:", err);
           } finally {
             connection.release();
           }
-
         } catch (err) {
           console.error("❌ CAMERA queue error:", err);
         } finally {

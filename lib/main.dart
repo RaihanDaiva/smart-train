@@ -12,7 +12,7 @@ void main() => runApp(MyApp());
 class MyApp extends StatelessWidget {
   MyApp({super.key});
 // Kampus
-final api = ApiService(baseUrl: "http://192.168.128.142:4000");
+final api = ApiService(baseUrl: "http://192.168.1.225:4000");
 
 // Rumah
 // final api = ApiService(baseUrl: "http://192.168.1.75:4000");

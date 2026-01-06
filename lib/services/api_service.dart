@@ -100,13 +100,25 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchSpeedHistory() async {
-    final resp = await http.get(Uri.parse('$baseUrl/train/history'))  ;
+  Future<List<dynamic>> fetchSpeedHistory({required String filter}) async {
+    final res = await http.get(
+      Uri.parse("$baseUrl/train-speed/history?filter=$filter"),
+    );
 
-    if (resp.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(resp.body));
+    if (res.statusCode != 200) {
+      throw Exception("Gagal ambil data kecepatan");
+    }
+
+    return jsonDecode(res.body);
+  }
+
+  Future<List<dynamic>> fetchRealtimeSpeed() async {
+    final res = await http.get(Uri.parse("$baseUrl/train/realtime"));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
     } else {
-      throw Exception('Gagal mengambil data sejarah kecepatan');
+      throw Exception("Failed to load realtime speed");
     }
   }
 
