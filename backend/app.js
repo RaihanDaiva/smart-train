@@ -12,7 +12,7 @@ app.use(cors());
 export const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "raihan123",
+  password: "",
   database: "smart_train",
   waitForConnections: true,
   connectionLimit: 10,

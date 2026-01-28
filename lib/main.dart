@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'providers/auth_provider.dart';
 import 'services/api_service.dart';
 import 'pages/login.dart';
@@ -7,16 +8,21 @@ import 'pages/home.dart';
 import 'pages/devices.dart';
 import 'pages/profile.dart';
 
-void main() => runApp(MyApp());
+void main() async {
+  await dotenv.load(fileName: ".env");
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   MyApp({super.key});
-// Kampus
-final api = ApiService(baseUrl: "http://192.168.1.225:4000");
 
-// Rumah
-// final api = ApiService(baseUrl: "http://192.168.1.75:4000");
+  // Otomatis dari .env (auto-detect IP laptop)
+  final api = ApiService(
+    baseUrl: dotenv.env['API_BASE_URL'] ?? "http://192.168.1.41:4000",
+  );
 
+  // // Manual hardcode (untuk testing jika .env bermasalah)
+  // final api = ApiService(baseUrl: "http://192.168.1.42:4000");
 
   @override
   Widget build(BuildContext context) {

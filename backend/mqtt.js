@@ -22,7 +22,7 @@ const topicTelemetry = "smartTrain/telemetry_batch";
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "raihan123",
+  password: "",
   database: "smart_train",
   waitForConnections: true,
   connectionLimit: 10,

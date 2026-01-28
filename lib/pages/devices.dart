@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/api_service.dart';
 import '../models/palang.dart';
 import '../models/camera.dart';
@@ -13,11 +14,13 @@ class Devices extends StatefulWidget {
 }
 
 class _DevicesState extends State<Devices> {
-  // Kampus
-  final api = ApiService(baseUrl: "http://192.168.1.225:4000");
+  // Otomatis dari .env (auto-detect IP laptop)
+  final api = ApiService(
+    baseUrl: dotenv.env['API_BASE_URL'] ?? "http://192.168.1.41:4000",
+  );
 
-  // Rumah
-  // final api = ApiService(baseUrl: "http://192.168.1.75:4000");
+  // // Manual hardcode (untuk testing jika .env bermasalah)
+  // final api = ApiService(baseUrl: "http://192.168.1.42:4000");
 
   bool palangOn = false;
   bool cameraOn = false;
@@ -96,8 +99,8 @@ class _DevicesState extends State<Devices> {
         setState(() => palangOn = !value);
       }
     } finally {
-      // Release lock after 1 second
-      await Future.delayed(const Duration(milliseconds: 1000));
+      // Release lock after 10 seconds (waktu tunggu palang bergerak)
+      await Future.delayed(const Duration(seconds: 11));
       _isPalangUpdating = false;
     }
   }
@@ -127,7 +130,7 @@ class _DevicesState extends State<Devices> {
       }
     } finally {
       // Release lock after 1 second
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 2000));
       _isCameraUpdating = false;
     }
   }
@@ -189,19 +192,19 @@ class _DevicesState extends State<Devices> {
         Column(
           children: [
             deviceCard(
-                  title: "Palang",
-                  icon: Icons.no_crash_outlined,
-                  isOn: palangOn,
-                  onToggle: updatePalang,
-                  isUpdating: _isPalangUpdating,
-                ),
-                deviceCard(
-                  title: "Camera",
-                  icon: Icons.videocam_rounded,
-                  isOn: cameraOn,
-                  onToggle: updateCamera,
-                  isUpdating: _isCameraUpdating,
-                ),
+              title: "Palang",
+              icon: Icons.no_crash_outlined,
+              isOn: palangOn,
+              onToggle: updatePalang,
+              isUpdating: _isPalangUpdating,
+            ),
+            deviceCard(
+              title: "Kamera",
+              icon: Icons.videocam_rounded,
+              isOn: cameraOn,
+              onToggle: updateCamera,
+              isUpdating: _isCameraUpdating,
+            ),
           ],
         ),
       ],
@@ -244,23 +247,45 @@ class _DevicesState extends State<Devices> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (isUpdating)
-                  const Text(
-                    "Updating...",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
+                const SizedBox(height: 4),
+                // Label status
+                Text(
+                  title == "Palang"
+                      ? (isOn ? "Terbuka" : "Tertutup")
+                      : (isOn ? "Aktif" : "Nonaktif"),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: title == "Palang"
+                        ? (isOn ? Colors.green : Colors.red)
+                        : (isOn ? Colors.green : Colors.grey),
                   ),
+                ),
+                const SizedBox(height: 2), // ⬅️ Tambah jarak kecil
+                // Area tetap untuk "Updating..." agar kotak tidak melompat
+                SizedBox(
+                  height: 16, // ⬅️ Tinggi tetap untuk area updating
+                  child: isUpdating
+                      ? const Text(
+                          "Updating...",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      : const SizedBox.shrink(), // ⬅️ Kosong tapi tetap reserve space
+                ),
               ],
             ),
           ),
           Switch(
-            value: isOn,
+            value: title == "Palang" ? !isOn : isOn,
             activeColor: Colors.white,
             activeTrackColor: Colors.red,
-            onChanged: isUpdating ? null : onToggle, // Disable saat updating
+            onChanged: isUpdating
+                ? null
+                : (val) => onToggle(title == "Palang" ? !val : val),
           ),
         ],
       ),

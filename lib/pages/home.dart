@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import '../services/api_service.dart';
@@ -10,6 +11,7 @@ import '../models/palang.dart';
 import '../models/camera.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/filter_button.dart';
+import '../widgets/mjpeg_widget.dart'; // ← TAMBAHKAN INI
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -21,11 +23,13 @@ class Home extends StatefulWidget {
 enum TimeFilter { oneMinute, fiveMinutes, tenMinutes, thirtyMinutes }
 
 class _HomeState extends State<Home> {
-  // Kampus
-  final api = ApiService(baseUrl: "http://192.168.1.225:4000");
+  // Otomatis dari .env (auto-detect IP laptop)
+  final api = ApiService(
+    baseUrl: dotenv.env['API_BASE_URL'] ?? "http://192.168.1.41:4000",
+  );
 
-  // Rumah
-  // final api = ApiService(baseUrl: "http://192.168.1.75:4000");
+  // // Manual hardcode (untuk testing jika .env bermasalah)
+  // final api = ApiService(baseUrl: "http://192.168.1.42:4000");
 
   String? titikKereta;
   String? ipCamera;
@@ -35,6 +39,9 @@ class _HomeState extends State<Home> {
   double? speedSegmen;
   Timer? _realtimeTimer;
   int? idSegmen;
+
+  // ========== STATE UNTUK CAMERA STREAM ==========
+  bool isStreamActive = false; // Track apakah user sudah tap untuk lihat stream
 
   List<Train> trains = [];
   List<Palang> palangs = [];
@@ -318,6 +325,10 @@ class _HomeState extends State<Home> {
 
                       // Card Status Palang & Camera
                       Row(children: [_buildPalangCard(), _buildCameraCard()]),
+
+                      // ========== CAMERA PREVIEW POV ==========
+                      _buildCameraPreview(),
+
                       SizedBox(height: 160),
                     ],
                   ),
@@ -446,55 +457,16 @@ class _HomeState extends State<Home> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  ipCamera ?? 'Menunggu data...',
-                  style: const TextStyle(
+                  ipCamera ?? 'offline',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.red,
+                    color: ipCamera != null ? Colors.green : Colors.red,
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChartCard({required String title, required Widget child}) {
-    return Container(
-      height: 350,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Icon(Icons.keyboard_arrow_down, color: Colors.black),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(child: child),
         ],
       ),
     );
@@ -601,9 +573,8 @@ class _HomeState extends State<Home> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-          if (charts[_currentChartIndex]['action'] != null)
-            charts[_currentChartIndex]['action'],
-
+              if (charts[_currentChartIndex]['action'] != null)
+                charts[_currentChartIndex]['action'],
             ],
           ),
           // Chart PageView
@@ -645,6 +616,7 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // ========== BAR CHART (untuk data kategorikal) ==========
   Widget _buildBarChart(List<int> data) {
     return BarChart(
       BarChartData(
@@ -694,6 +666,47 @@ class _HomeState extends State<Home> {
     );
   }
 
+  // ========== CHART CARD WRAPPER (untuk single chart tanpa carousel) ==========
+  Widget _buildChartCard({required String title, required Widget child}) {
+    return Container(
+      height: 350,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down, color: Colors.black),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+
+  // ========== LINE CHART (untuk trend/kecepatan) ==========
   Widget _buildLineChart({
     required List<FlSpot> data,
     required List<String> timestamps,
@@ -864,6 +877,241 @@ class _HomeState extends State<Home> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  // ========== CAMERA PREVIEW / POV ==========
+  Widget _buildCameraPreview() {
+    // Cek apakah kamera aktif dan ada IP
+    bool isCameraActive =
+        cameras.isNotEmpty && cameras[0].status.toLowerCase() == "aktif";
+
+    bool hasIpAddress =
+        ipCamera != null && ipCamera!.isNotEmpty && ipCamera != 'offline';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              const Icon(Icons.camera_alt, color: Colors.red, size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Live Camera Feed',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              // Status indicator
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCameraActive && hasIpAddress
+                      ? Colors.green.withOpacity(0.2)
+                      : Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isCameraActive && hasIpAddress ? 'ONLINE' : 'OFFLINE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isCameraActive && hasIpAddress
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Camera Feed Container
+          Container(
+            height: 240,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300, width: 2),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: _buildCameraContent(isCameraActive, hasIpAddress),
+            ),
+          ),
+
+          // IP Address Info
+          if (hasIpAddress)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    'IP: $ipCamera',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Website Viewing Info (SELALU MUNCUL)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 16,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'To view the feed in the Website or other devices, you must unsee the current feed',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCameraContent(bool isCameraActive, bool hasIpAddress) {
+    // Jika kamera tidak aktif atau tidak ada IP
+    if (!isCameraActive || !hasIpAddress) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.videocam_off,
+              size: 60,
+              color: Colors.white.withOpacity(0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              !isCameraActive ? 'Kamera Tidak Aktif' : 'Menunggu IP Address...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final String streamUrl = 'http://$ipCamera/stream';
+
+    // ========== WRAPPER DENGAN TAP GESTURE ==========
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          isStreamActive = !isStreamActive; // Toggle stream
+        });
+        debugPrint("🎥 Stream ${isStreamActive ? 'STARTED' : 'STOPPED'}");
+      },
+      child: Stack(
+        children: [
+          // ========== VIDEO STREAM ATAU PLACEHOLDER ==========
+          if (isStreamActive)
+            MjpegWidget(
+              key: ValueKey(streamUrl),
+              stream: streamUrl,
+              fit: BoxFit.cover,
+            )
+          else
+            // Placeholder ketika belum tap
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.play_circle_outline,
+                    size: 80,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Camera Ready',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // ========== TEXT OVERLAY (TAP TO SEE / UNSEE) ==========
+          Positioned(
+            bottom: 12,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isStreamActive ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isStreamActive ? 'Tap to Unsee' : 'Tap to See',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

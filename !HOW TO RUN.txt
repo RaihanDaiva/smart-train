@@ -1,0 +1,68 @@
+1. Open Terminal
+2. `ipconfig` in terminal and then enter
+3. You'll see infromation like this
+
+============================================================================
+
+    Ethernet adapter Ethernet:
+
+        Connection-specific DNS Suffix  . :
+        Link-local IPv6 Address . . . . . : xxxx::xxxx:xxxx:xxxx:xxxx%x
+        IPv4 Address. . . . . . . . . . . : 192.168.1.41
+        Subnet Mask . . . . . . . . . . . : 255.255.255.0
+        Default Gateway . . . . . . . . . : xxx.xxx.xxx.xxx
+
+    Wireless LAN adapter Local Area Connection* 1:
+    
+(etc.)
+============================================================================
+
+4. Take the "IPv4 Address" IP because you'll need it soon
+
+5. Open VSCode
+6. Open the .env file via VSCode
+7. Put the the IPv4 Address you just found in the 'ipconfig' there
+
+Example from:
+================
+API_BASE_URL=http://xxx.xxx.xxx.xxx:4000
+================
+
+to:
+================
+API_BASE_URL=http://192.168.1.41:4000
+================
+
+
+8. Make sure Node/Express installed
+9. Make sure Flutter and its SDK installed
+
+10. DON'T FORGET TO START THE LARAGON/XAMPP LOCALHOST SERVER (APACHE + MYSQL)
+
+
+11. Open the root/.env
+
+12. Change the IP address
+13. Terminal
+14. cd/backend
+15. `npm install` in terminal and then enter (only one time)
+16. `nodemon app` in terminal and then enter
+
+17. Make sure your phone plugged in via USB
+18. Make sure your phone has USB Debugging activated
+19. Make sure your phone set from "Charging via USB" to  "Transfer Files" mode after plugged in
+20. Make sure uninstall the app itself in the phone (if previously installed)
+
+21. New Terminal
+22. `flutter doctor` in terminal and then enter
+23. Check if your phone detected in the output
+
+24. `flutter clean` in terminal and then enter
+25. `flutter pub get` in terminal and then enter
+26. `flutter pub run flutter_launcher_icons` in terminal and then enter
+27. `flutter clean` in terminal and then enter
+28. `flutter pub get` in terminal and then enter
+
+29. `flutter run` in terminal and then enter
+
+30. Done
