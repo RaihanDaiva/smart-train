@@ -11,13 +11,13 @@ class AuthProvider extends ChangeNotifier {
   bool _loading = false;
 
   AuthProvider({required this.api, FlutterSecureStorage? storage})
-      : secureStorage = storage ?? const FlutterSecureStorage();
+    : secureStorage = storage ?? const FlutterSecureStorage();
 
   bool get isAuthenticated => user != null;
   bool get loading => _loading;
 
   // ============================================================
-  // INIT — Cek sesi pengguna
+  // INIT - Cek sesi pengguna
   // ============================================================
   Future<void> init() async {
     token = await secureStorage.read(key: "token");
@@ -45,16 +45,11 @@ class AuthProvider extends ChangeNotifier {
       final data = await api.login(email, password);
       print(data);
 
-
       // Sesuai API kamu
       token = data["accessToken"];
       final u = data["user"];
 
-      user = {
-        "id": u["id"],
-        "name": u["name"],
-        "email": u["email"],
-      };
+      user = {"id": u["id"], "name": u["name"], "email": u["email"]};
 
       await secureStorage.write(key: "token", value: token);
       await secureStorage.write(key: "user_id", value: u["id"].toString());
@@ -66,7 +61,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
-    
   }
 
   // ============================================================

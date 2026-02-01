@@ -41,7 +41,7 @@ class _MjpegWidgetState extends State<MjpegWidget> {
 
   void _startStream() async {
     try {
-      debugPrint("🔌 Connecting to: ${widget.stream}");
+      debugPrint("Connecting to: ${widget.stream}");
       final request = http.Request('GET', Uri.parse(widget.stream));
       final response = await request.send();
 

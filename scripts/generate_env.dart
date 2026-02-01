@@ -1,7 +1,7 @@
 import 'dart:io';
 
 void main() async {
-  print('🔍 Mendeteksi IP Address laptop...');
+  print('Mendeteksi IP Address laptop...');
 
   String? ipAddress;
   String? interfaceName;
@@ -38,14 +38,14 @@ void main() async {
             ip.startsWith('172.')) {
           candidates.add({'ip': ip, 'name': interface.name, 'type': name});
 
-          print('ℹ️  Ditemukan: $ip pada ${interface.name}');
+          print('Ditemukan: $ip pada ${interface.name}');
         }
       }
     }
 
     if (candidates.isEmpty) {
-      print('❌ Tidak dapat menemukan IP address');
-      print('💡 Pastikan laptop terhubung ke WiFi/Ethernet');
+      print('Tidak dapat menemukan IP address');
+      print('Pastikan laptop terhubung ke WiFi/Ethernet');
       exit(1);
     }
 
@@ -57,7 +57,7 @@ void main() async {
         if (candidate['ip']!.startsWith('192.168.')) {
           ipAddress = candidate['ip'];
           interfaceName = candidate['name'];
-          print('✅ IP WiFi terdeteksi: $ipAddress ($interfaceName)');
+          print('IP WiFi terdeteksi: $ipAddress ($interfaceName)');
           break;
         }
       }
@@ -71,7 +71,7 @@ void main() async {
           if (candidate['ip']!.startsWith('192.168.')) {
             ipAddress = candidate['ip'];
             interfaceName = candidate['name'];
-            print('✅ IP Ethernet terdeteksi: $ipAddress ($interfaceName)');
+            print('IP Ethernet terdeteksi: $ipAddress ($interfaceName)');
             break;
           }
         }
@@ -84,7 +84,7 @@ void main() async {
         if (candidate['ip']!.startsWith('192.168.')) {
           ipAddress = candidate['ip'];
           interfaceName = candidate['name'];
-          print('✅ IP terdeteksi: $ipAddress ($interfaceName)');
+          print('IP terdeteksi: $ipAddress ($interfaceName)');
           break;
         }
       }
@@ -94,7 +94,7 @@ void main() async {
     if (ipAddress == null) {
       ipAddress = candidates.first['ip'];
       interfaceName = candidates.first['name'];
-      print('✅ IP terdeteksi: $ipAddress ($interfaceName)');
+      print('IP terdeteksi: $ipAddress ($interfaceName)');
     }
 
     // Buat/Update file .env
@@ -103,10 +103,10 @@ void main() async {
 
     await envFile.writeAsString('API_BASE_URL=$baseUrl\n');
 
-    print('✅ File .env berhasil dibuat');
-    print('📝 API_BASE_URL=$baseUrl');
+    print('File .env berhasil dibuat');
+    print('API_BASE_URL=$baseUrl');
   } catch (e) {
-    print('❌ Error: $e');
+    print('Error: $e');
     exit(1);
   }
 }

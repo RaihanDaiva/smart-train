@@ -249,7 +249,7 @@ class _LoginPageState extends State<LoginPage> {
                                   try {
                                     await auth.login(emailC.text, passC.text);
 
-                                    // Setelah login → pindah ke HomePage
+                                    // Setelah login > pindah ke HomePage
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(

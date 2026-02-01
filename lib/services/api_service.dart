@@ -11,11 +11,11 @@ class ApiService {
   ApiService({required this.baseUrl});
 
   // ====================================================
-  // 🔐 AUTHENTICATION
+  // AUTHENTICATION
   // ====================================================
 
   // ====================================================
-  // 🟩 REGISTER user baru
+  // REGISTER user baru
   // ====================================================
   Future<bool> register(String name, String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/register');
@@ -29,7 +29,7 @@ class ApiService {
   }
 
   // ====================================================
-  // 🔐 LOGIN (mengembalikan data user, bukan token)
+  // LOGIN (mengembalikan data user, bukan token)
   // ====================================================
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
@@ -55,7 +55,7 @@ class ApiService {
 
   // ---------------- Get User Login (/auth/me) ----------------
   // ====================================================
-  // 👤 GET USER BY ID (sesuai backend Node.js)
+  // GET USER BY ID (sesuai backend Node.js)
   // ====================================================
   Future<Map<String, dynamic>> getUserById(String id) async {
     final url = Uri.parse('$baseUrl/auth/user/$id');
@@ -75,7 +75,7 @@ class ApiService {
   }
 
   // ====================================================
-  // 🟦 TRAIN
+  // TRAIN
   // ====================================================
   Future<List<Train>> fetchTrain() async {
     final resp = await http.get(Uri.parse('$baseUrl/train/latest'));
@@ -123,7 +123,7 @@ class ApiService {
   }
 
   // ====================================================
-  // 🟧 PALANG
+  // PALANG
   // ====================================================
   Future<List<Palang>> fetchPalang() async {
     final resp = await http.get(Uri.parse('$baseUrl/palang'));
@@ -136,7 +136,7 @@ class ApiService {
   }
 
   // ====================================================
-  // 🟪 CAMERA
+  // CAMERA
   // ====================================================
   Future<List<Camera>> fetchCamera() async {
     final resp = await http.get(Uri.parse('$baseUrl/camera'));

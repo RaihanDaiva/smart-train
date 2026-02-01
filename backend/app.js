@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 
 // ==========================================
-// 🗄️ Database Connection Pool
+// Database Connection Pool
 // ==========================================
 export const db = mysql.createPool({
   host: "localhost",
@@ -19,7 +19,7 @@ export const db = mysql.createPool({
 });
 
 // ==========================================
-// 🚆 TRAIN - Ambil data terakhir
+// TRAIN - Ambil data terakhir
 // ==========================================
 app.get("/train/latest", async (req, res) => {
   try {
@@ -37,7 +37,7 @@ app.get("/train/latest", async (req, res) => {
 });
 
 // ==========================================
-// 🚧 PALANG - Ambil data terakhir
+// PALANG - Ambil data terakhir
 // ==========================================
 app.get("/palang", async (req, res) => {
   try {
@@ -57,13 +57,13 @@ app.get("/palang", async (req, res) => {
 
 app.post("/palang/update", express.json(), (req, res) => {
   const { status } = req.body;
-  console.log(`📤 Publishing palang status: ${status}`);
+  console.log(`Publishing palang status: ${status}`);
   mqttClient.publish("smartTrain/barrier", JSON.stringify({ status }));
   res.json({ success: true });
 });
 
 // ==========================================
-// 📸 CAMERA - Ambil data terakhir
+// CAMERA - Ambil data terakhir
 // ==========================================
 app.get("/camera", async (req, res) => {
   try {
@@ -83,7 +83,7 @@ app.get("/camera", async (req, res) => {
 
 app.post("/camera/update", express.json(), (req, res) => {
   const { status } = req.body;
-  console.log(`📤 Publishing camera status: ${status}`);
+  console.log(`Publishing camera status: ${status}`);
   mqttClient.publish("smartTrain/camera", JSON.stringify({ status }));
   res.json({ success: true });
 });
@@ -93,7 +93,7 @@ app.listen(4000, "0.0.0.0", () => {
 });
 
 // ==========================================
-// 🚆 TRAIN - Ambil riwayat kecepatan (Filter Waktu)
+// TRAIN - Ambil riwayat kecepatan (Filter Waktu)
 // ==========================================
 app.get("/train-speed/history", async (req, res) => {
   const { filter } = req.query;
@@ -136,7 +136,7 @@ app.get("/train-speed/history", async (req, res) => {
 });
 
 // ==========================================
-// 🚆 TRAIN - Ambil kecepatan realtime
+// TRAIN - Ambil kecepatan realtime
 // ==========================================
 app.get("/train/realtime", async (req, res) => {
   try {
@@ -158,7 +158,7 @@ app.get("/train/realtime", async (req, res) => {
 });
 
 // ==========================================
-// 🔐 AUTHENTICATION
+// AUTHENTICATION
 // ==========================================
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";

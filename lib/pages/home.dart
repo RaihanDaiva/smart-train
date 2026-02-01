@@ -11,7 +11,7 @@ import '../models/palang.dart';
 import '../models/camera.dart';
 import '../widgets/profile_menu.dart';
 import '../widgets/filter_button.dart';
-import '../widgets/mjpeg_widget.dart'; // ← TAMBAHKAN INI
+import '../widgets/mjpeg_widget.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -117,12 +117,12 @@ class _HomeState extends State<Home> {
     try {
       await mqtt!.connect();
       if (mqtt!.connectionStatus!.state != MqttConnectionState.connected) {
-        debugPrint("❌ MQTT gagal connect");
+        debugPrint("MQTT gagal connect");
         return;
       }
-      debugPrint("✅ MQTT Connected");
+      debugPrint("MQTT Connected");
     } catch (e) {
-      debugPrint("❌ MQTT ERROR: $e");
+      debugPrint("MQTT ERROR: $e");
       mqtt!.disconnect();
       return;
     }
@@ -142,7 +142,7 @@ class _HomeState extends State<Home> {
         rec.payload.message,
       );
 
-      debugPrint("📥 MQTT [$topic] : $payload");
+      debugPrint("MQTT [$topic] : $payload");
 
       try {
         final data = jsonDecode(payload);
@@ -161,7 +161,7 @@ class _HomeState extends State<Home> {
 
           if (newSpeed != null && mounted) {
             setState(() {
-              speedSegmen = newSpeed; // ⬅️ hanya ini
+              speedSegmen = newSpeed;
             });
           }
         }
@@ -184,7 +184,7 @@ class _HomeState extends State<Home> {
           }
         }
       } catch (e) {
-        debugPrint("❌ MQTT JSON error: $e");
+        debugPrint("MQTT JSON error: $e");
       }
     });
   }
@@ -491,7 +491,7 @@ class _HomeState extends State<Home> {
       },
       {
         'title': 'Kecepatan Kereta Realtime',
-        'action': null, // ❌ TIDAK ADA FILTER
+        'action': null, // TIDAK ADA FILTER
         'widget': _buildLineChart(
           data: realtimeSpeedData,
           timestamps: realtimeTimestamps,
@@ -1039,7 +1039,7 @@ class _HomeState extends State<Home> {
         setState(() {
           isStreamActive = !isStreamActive; // Toggle stream
         });
-        debugPrint("🎥 Stream ${isStreamActive ? 'STARTED' : 'STOPPED'}");
+        debugPrint("Stream ${isStreamActive ? 'STARTED' : 'STOPPED'}");
       },
       child: Stack(
         children: [

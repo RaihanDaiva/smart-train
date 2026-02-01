@@ -10,7 +10,7 @@ class Train {
     double parsedSpeed;
 
     if (rawSpeed is int) {
-      parsedSpeed = rawSpeed.toDouble(); // KONVERSI int → double
+      parsedSpeed = rawSpeed.toDouble(); // KONVERSI int > double
     } else if (rawSpeed is double) {
       parsedSpeed = rawSpeed; // sudah double
     } else {

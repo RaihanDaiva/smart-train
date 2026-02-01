@@ -267,7 +267,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                     );
 
-                                    // Setelah register → pindah ke login
+                                    // Setelah register > pindah ke login
                                     Navigator.pushReplacement(
                                       context,
                                       MaterialPageRoute(

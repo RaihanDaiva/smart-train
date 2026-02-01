@@ -29,7 +29,7 @@ class _DevicesState extends State<Devices> {
   bool isLoading = true;
   String? errorMsg;
 
-  // 🛡️ Prevent multiple simultaneous requests
+  // Prevent multiple simultaneous requests
   bool _isPalangUpdating = false;
   bool _isCameraUpdating = false;
 
@@ -78,7 +78,7 @@ class _DevicesState extends State<Devices> {
   Future<void> updatePalang(bool value) async {
     // Prevent multiple calls
     if (_isPalangUpdating) {
-      print("⚠️ Palang update already in progress");
+      print("Palang update already in progress");
       return;
     }
 
@@ -91,9 +91,9 @@ class _DevicesState extends State<Devices> {
       await api.postData("/palang/update", {
         "status": value ? "Terbuka" : "Tertutup",
       });
-      print("✅ Palang updated: ${value ? 'Terbuka' : 'Tertutup'}");
+      print("Palang updated: ${value ? 'Terbuka' : 'Tertutup'}");
     } catch (e) {
-      print("❌ Error Palang: $e");
+      print("Error Palang: $e");
       // Revert state if failed
       if (mounted) {
         setState(() => palangOn = !value);
@@ -108,7 +108,7 @@ class _DevicesState extends State<Devices> {
   Future<void> updateCamera(bool value) async {
     // Prevent multiple calls
     if (_isCameraUpdating) {
-      print("⚠️ Camera update already in progress");
+      print("Camera update already in progress");
       return;
     }
 
@@ -121,9 +121,9 @@ class _DevicesState extends State<Devices> {
       await api.postData("/camera/update", {
         "status": value ? "Aktif" : "Nonaktif",
       });
-      print("✅ Camera updated: ${value ? 'Aktif' : 'Nonaktif'}");
+      print("Camera updated: ${value ? 'Aktif' : 'Nonaktif'}");
     } catch (e) {
-      print("❌ Error Camera: $e");
+      print("Error Camera: $e");
       // Revert state if failed
       if (mounted) {
         setState(() => cameraOn = !value);
@@ -261,10 +261,10 @@ class _DevicesState extends State<Devices> {
                         : (isOn ? Colors.green : Colors.grey),
                   ),
                 ),
-                const SizedBox(height: 2), // ⬅️ Tambah jarak kecil
+                const SizedBox(height: 2),
                 // Area tetap untuk "Updating..." agar kotak tidak melompat
                 SizedBox(
-                  height: 16, // ⬅️ Tinggi tetap untuk area updating
+                  height: 16, // Tinggi tetap untuk area updating
                   child: isUpdating
                       ? const Text(
                           "Updating...",
@@ -274,7 +274,7 @@ class _DevicesState extends State<Devices> {
                             fontStyle: FontStyle.italic,
                           ),
                         )
-                      : const SizedBox.shrink(), // ⬅️ Kosong tapi tetap reserve space
+                      : const SizedBox.shrink(), // Kosong tapi tetap reserve space
                 ),
               ],
             ),
