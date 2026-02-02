@@ -100,6 +100,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon/mobile_icon.png"  # path ke file icon kamu
+  image_path: "assets/icon/mobile_iconB.png"  # path ke file icon kamu
   adaptive_icon_background: "#FFFFFF"     # warna background (opsional)
-  adaptive_icon_foreground: "assets/icon/mobile_icon.png"  # untuk Android adaptive icon
+  adaptive_icon_foreground: "assets/icon/mobile_iconB.png"  # untuk Android adaptive icon
